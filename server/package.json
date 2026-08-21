@@ -1,12 +1,44 @@
 {
-  "name": "server",
+  "name": "v1",
   "version": "1.0.0",
+  "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "node --test test/*.test.js",
+    "migrate:private-volumes": "node scripts/applyPrivateVolumeMigration.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-batch": "^3.876.0",
+    "@aws-sdk/client-ivs": "^3.876.0",
+    "@aws-sdk/client-ivs-realtime": "^3.876.0",
+    "@aws-sdk/client-ivschat": "^3.876.0",
+    "@aws-sdk/client-s3": "^3.876.0",
+    "@aws-sdk/credential-providers": "^3.876.0",
+    "@aws-sdk/lib-storage": "^3.876.0",
+    "@aws-sdk/s3-request-presigner": "^3.876.0",
+    "@supabase/supabase-js": "^2.50.5",
+    "bcrypt": "^6.0.0",
+    "child_process": "^1.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.5",
+    "nodemon": "^3.1.10",
+    "pg": "^8.16.2",
+    "satelize": "^0.2.0",
+    "socket.io": "^4.8.1",
+    "supabase": "^2.31.8",
+    "uuid": "^13.0.0"
+  }
 }
