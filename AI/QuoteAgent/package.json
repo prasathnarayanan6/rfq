@@ -1,0 +1,14 @@
+{
+  "name": "quote-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1120.0",
+    "@google/genai": "^2.19.0",
+    "@langchain/core": "^1.2.9",
+    "@langchain/langgraph": "^1.4.13",
+    "@langchain/openai": "^1.5.10",
+    "dotenv": "^17.4.2",
+    "zod": "^4.4.3"
+  }
+}
