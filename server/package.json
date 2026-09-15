@@ -7,7 +7,9 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "test": "node --test test/*.test.js",
-    "migrate:private-volumes": "node scripts/applyPrivateVolumeMigration.js"
+    "migrate:private-volumes": "node scripts/applyPrivateVolumeMigration.js",
+    "vendors:check": "node vendor/migrate.js",
+    "vendors:migrate": "node vendor/migrate.js --apply"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +17,7 @@
   "type": "commonjs",
   "dependencies": {
     "@aws-sdk/client-batch": "^3.876.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1120.0",
     "@aws-sdk/client-ivs": "^3.876.0",
     "@aws-sdk/client-ivs-realtime": "^3.876.0",
     "@aws-sdk/client-ivschat": "^3.876.0",
