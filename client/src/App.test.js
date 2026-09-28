@@ -4,5 +4,5 @@ import App from './App';
 test('renders the current login page', () => {
   window.history.pushState({}, '', '/');
   render(<App />);
-  expect(screen.getByText(/forgot password/i)).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /login/i })).toBeInTheDocument();
 });

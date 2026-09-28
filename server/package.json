@@ -7,6 +7,8 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "test": "node --test test/*.test.js",
+    "auth:migrate": "node Auth/migrate.js",
+    "auth:create-user": "node Auth/createUser.js",
     "migrate:private-volumes": "node scripts/applyPrivateVolumeMigration.js",
     "vendors:check": "node vendor/migrate.js",
     "vendors:migrate": "node vendor/migrate.js --apply"

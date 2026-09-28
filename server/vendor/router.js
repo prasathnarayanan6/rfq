@@ -3,6 +3,8 @@ const { requireUser } = require('./auth');
 const { validateVendor } = require('./validation');
 const { listVendors, saveVendors } = require('./store');
 const { prepareDrafts } = require('./organize');
+const { validateCallRequest } = require('./callValidation');
+const { createCallRequest } = require('./callStore');
 
 const router = express.Router();
 router.use(requireUser);
@@ -25,6 +27,22 @@ router.post('/prepare', async (req, res) => {
   } catch (error) {
     const badInput = /Import up to|Pasted text|Add at least/.test(error.message);
     res.status(badInput ? 400 : 502).json({ error: badInput ? error.message : 'Vendor agent could not organize this list' });
+  }
+});
+
+router.post('/calls', async (req, res) => {
+  const checked = validateCallRequest(req.body);
+  if (Object.keys(checked.errors).length) {
+    return res.status(400).json({ error: 'Complete the call form before initiating', errors: checked.errors });
+  }
+  try {
+    const callRequest = await createCallRequest(req.vendorUserId, checked.value);
+    return res.status(201).json({ callRequest });
+  } catch (error) {
+    if (error.code === 'INVALID_VENDOR_SELECTION') {
+      return res.status(400).json({ error: error.message });
+    }
+    return res.status(503).json({ error: 'The call process could not be initiated' });
   }
 });
 

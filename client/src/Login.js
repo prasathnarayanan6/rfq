@@ -1,228 +1,160 @@
-import React, {useState} from 'react';
-import {Mail, LockIcon, Eye, EyeOff} from "lucide-react";
+import React, { useState } from 'react';
+import { ArrowRight, CheckCircle2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { ClipLoader } from 'react-spinners';
 import logo from './assets/Red_Beige_Minimal_Simple_Typographic_Chic_Logo-removebg-preview.png';
-import {Link, useNavigate} from "react-router-dom";
-import axios from 'axios';
 import LoginAPI from './API/loginAPI';
-import { jwtDecode } from "jwt-decode";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import CustomCloseButton from './utils/CustomeCloseButton';
-import { PuffLoader,RingLoader, CircleLoader , MoonLoader, ClipLoader} from 'react-spinners';
-// import ForgotPassword from '../utils/ForgotPassword';
-// import ForgotPasswordAPI from '../API/ForgotPasswordAPI';
+import 'react-toastify/dist/ReactToastify.css';
+
+const highlights = [
+  'Organize vendor data in one workspace',
+  'Prepare intelligent outreach workflows',
+  'Keep every procurement conversation focused',
+];
+
 function Login() {
-  //icon change for password input
-  const [icon, setIcon] = useState(EyeOff);
-  const [type, setType] = useState('password');
-  const handleToggle = () => {
-    if(type==='password')
-    {
-        setIcon(Eye);
-        setType('text');
-    }
-    else
-    {
-        setIcon(EyeOff);
-        setType('password');
-    }
-  }
-  const[showModal, setShowModal] = useState(false);
-  //handle loading
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loadingpassword, setPasswordLoading] = useState(false);
-  //const [] = useState([]);
-  //navigating when success
+  const [userData, setUserData] = useState({ user_mail: '', user_password: '' });
   const navigate = useNavigate();
-  //handling user input 
-  const [userData, setUserData] = useState({
-        user_mail:"",
-        user_password:""
-  });
-  //console.log(userData);
-   const handleChange = (e) =>{
-        const {name, value} = e.target;
-        setUserData((prevData)=>({
-            ...prevData,
-            [name]: value,
-        }))
-   }
-   const handleForgotPassword = () => setShowModal(true);
-   //handle Login API
-   const handleSubmit = async(e) => {
-        e.preventDefault();
-        if(!userData.user_mail || !userData.user_password)
-        {
-            toast.error("please fill all the fields" , {
-                autoClose: 3000,
-                toastId: 'input-missing',
-                icon: false,
-                closeButton: CustomCloseButton,
-            });
-            return;
-        }
-        setLoading(true);
-        try {
-            const response = await LoginAPI(userData);
-            if (response.data.code === 200) {
-              const token = response.data.accessToken;
-              localStorage.setItem('user_token', token);
-              localStorage.setItem('isVr', response.data.isVr);
-              localStorage.setItem('loginSource', response.data.loginSource);
-              localStorage.setItem('device', response.data.device);
-              localStorage.setItem('os', response.data.os);
-              sessionStorage.setItem('user_name', response.data.name);
-              localStorage.setItem('people_id', response.data.people_id);
-              navigate('/dashboard');
-            }
-          } catch (err) {
-            if (err?.response?.data?.code === 401 || err?.response?.data?.code === 404) {
-              toast.error("invalid credentials", {
-                toastId: 'invalid-credentials',
-                autoClose: 3000,
-                icon: false,
-                closeButton: CustomCloseButton,
-              });
-            }
-          } finally {
-            setLoading(false); 
-          }
-   }
-   //onKey enter submit
-   const handleKeyPress = (e) => {
-        if (e.key === "Enter") {
-          handleSubmit(e);
-        }
-   };
-   ///forgot password input handling
-   const [changepassword, setChangePassword] = useState({
-        reset_password_mail: ""
-   })
-   const handleChangePassword = (e) => {
-        const {name, value} = e.target;
-        setChangePassword((prevData) => ({
-            ...prevData,
-            [name]: value,
-        }));
-   }
-//    const ResetPassword = async(e) => {
-//           e.preventDefault();
-//           if(!changepassword.reset_password_mail)
-//           {
-//               toast.error("field should not be empty" , {
-//                   autoClose: 3000,
-//                   toastId: 'input-missing',
-//                   icon: false,
-//                   closeButton: CustomCloseButton,
-//               });
-//               return;
-//           }
-//           setPasswordLoading(true);
-//           try
-//           {
-//               const result = await ForgotPasswordAPI(changepassword)
-//               if(result.data.logResponse.code == 200)
-//               {
-//                   toast.success("Password request sent." , {
-//                         autoClose: 3000,
-//                         toastId: 'request-sent',
-//                         icon: false,
-//                         closeButton: CustomCloseButton,
-//                   });
-//               }
-//           }
-//           catch(err)
-//           {
-//             if (err?.response?.data?.code === 500 || err?.response?.data?.code === 404) {
-//               toast.error("invalid credentials", {
-//                 toastId: 'invalid-credentials',
-//                 autoClose: 3000,
-//                 icon: false,
-//                 closeButton: CustomCloseButton,
-//               });
-//             }
-//           }
-//           finally
-//           {
-//             setPasswordLoading(false);
-//             setShowModal(false)
-//           }
-//    }
+
+  const handleChange = ({ target: { name, value } }) => {
+    setUserData((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!userData.user_mail.trim() || !userData.user_password) {
+      toast.error('Please enter your email and password', {
+        autoClose: 3000, toastId: 'input-missing', icon: false, closeButton: CustomCloseButton,
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await LoginAPI(userData);
+      localStorage.setItem('user_token', response.data.accessToken);
+      localStorage.setItem('people_id', response.data.people_id);
+      sessionStorage.setItem('user_name', response.data.name);
+      navigate('/dashboard', { replace: true });
+    } catch (error) {
+      const message = error?.response?.data?.code === 429
+        ? error.response.data.status
+        : error?.response?.data?.code === 500
+          ? 'Login service is currently unavailable'
+          : 'The email or password is incorrect';
+      toast.error(message, {
+        toastId: 'login-error', autoClose: 3000, icon: false, closeButton: CustomCloseButton,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="h-screen grid grid-cols-2">
-      <div className="bg-gray-100 flex justify-center items-center">
-        <div className="w-[55%] max-w-md">
-          <h1 className="text-3xl font-semibold text-gray-700 mb-6">
-            Login
-          </h1>
-          <div className="relative">
-                    <input
-                        type="text"
-                        placeholder="Email address"
-                        value={userData.user_mail}
-                        onChange={handleChange}
-                        onKeyDown={handleKeyPress}
-                        name="user_mail"
-                        className="rounded px-10 py-3 w-full mb-6 focus:outline-none focus:ring-0"
-                    />  
-                    <div className="absolute top-3 left-2"><Mail size={24} strokeWidth={2} className="text-gray-400" /></div>
+    <main className="min-h-screen bg-[#f6f7f9] lg:grid lg:grid-cols-[1.08fr_.92fr]">
+      <section className="relative hidden min-h-screen overflow-hidden bg-[#111827] px-12 py-10 text-white lg:flex lg:flex-col xl:px-20 xl:py-14">
+        <div className="absolute -left-36 top-1/3 h-96 w-96 rounded-full bg-brand-600/20 blur-3xl" />
+        <div className="absolute -right-40 -top-32 h-[30rem] w-[30rem] rounded-full bg-red-400/10 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-amber-300/5 blur-3xl" />
+
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="rounded-xl bg-white px-3 py-2 shadow-xl shadow-black/20">
+            <img src={logo} alt="Supply.ai" className="h-8 w-auto" />
           </div>
-          <div className="relative">
-                    <input
-                        type={type}
-                        placeholder="Password"
-                        value={userData.user_password}
-                        onChange={handleChange}
-                        onKeyDown={handleKeyPress}
-                        name="user_password"
-                        className="rounded px-10 py-3 w-full mb-6 focus:outline-none focus:ring-0"
-                    />  
-                    <div className="absolute top-3 left-2"><LockIcon size={24} strokeWidth={2} className="text-gray-400" /></div>
-                    <button class="absolute top-3 right-2" onClick={handleToggle}>
-                    {React.createElement(icon, {
-                            size: 24,
-                            strokeWidth: 2,
-                            className: 'text-gray-400',
-                    })}
-                    </button>
-          </div>
-          <button className={`${loading ? ("bg-gray-300 text-gray-500 font-semibold rounded px-5 py-2 text-lg transition-all ease-in-out") : ("bg-[#e90000] hover:bg-[#8DC63F] text-white rounded px-10 py-2 font-semibold text-lg transition-all ease-in-out")}`} onClick={handleSubmit} disabled={loading}>
-          {/* <span>Login</span> */}
-          {loading ? (
-                <div>Logging In <ClipLoader color="#8DC63F" size={24} className="ms-2" cssOverride={{ borderWidth: "4px",  }}/></div>
-            ) : (
-                "Login"
-            )}
-          </button><br></br><br></br>
-          <button className="font-semibold text-blue-500" onClick={handleForgotPassword}>Forgot Password?</button>
+          <span className="text-sm font-medium text-slate-300">Procurement workspace</span>
         </div>
-      </div>
-      <div className="flex justify-center items-center border bg-[#edece8]">
-            <div className="bg-white flex justify-center items-center py-20 rounded-3xl"><img src={logo} className="w-[50%]"/></div>  
-      </div>
-      {/* <ForgotPassword isVisible={showModal} onClose={() => setShowModal(false)}>
-              <div className="text-lg">Reset Password</div>
-              <input
-                  type="text"
-                  placeholder="Enter your email address"
-                  value={changepassword.reset_password_mail}
-                  onChange={handleChangePassword}
-                  name="reset_password_mail"
-                  className="rounded px-2 py-3 w-full mb-6 focus:outline-none focus:ring-0 border mt-4"
-              />
-              <div className="flex justify-end items-center gap-3">
-                  <button className={`${loadingpassword ? ("bg-gray-300 text-gray-500 font-semibold rounded px-5 py-2 text-lg transition-all ease-in-out") : ("bg-[#8DC63F] hover:bg-[#8DC63F] text-white rounded px-10 py-2 font-semibold text-lg transition-all ease-in-out")}`}>
-                          {loadingpassword ? (
-                              <div>Sending <ClipLoader color="#8DC63F" size={24} className="ms-2" cssOverride={{ borderWidth: "4px",  }}/></div>
-                          ) : (
-                              "Reset Password"
-                          )}
-                  </button>
-                  <button className="text-red-500 hover:bg-red-200 px-5 py-2 rounded transition-all ease-in-out" onClick={() => setShowModal(false)}>Cancel</button>
+
+        <div className="relative z-10 my-auto max-w-2xl animate-fade-up">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-[.18em] text-red-200 backdrop-blur">
+            <Sparkles size={14} /> Built for smarter sourcing
+          </div>
+          <h2 className="max-w-xl text-5xl font-semibold leading-[1.08] tracking-tight xl:text-6xl">
+            Better vendor decisions start with better conversations.
+          </h2>
+          <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
+            Bring vendor discovery, structured outreach, and procurement context together in a workspace your team can move through with confidence.
+          </p>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            {highlights.map((item) => (
+              <div key={item} className="flex items-start gap-3 text-sm text-slate-200">
+                <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-red-400" />
+                <span>{item}</span>
               </div>
-      </ForgotPassword> */}
-    </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-6 text-xs text-slate-400">
+          <span>Supply.ai RFQ Portal</span>
+          <span className="flex items-center gap-2"><ShieldCheck size={15} /> Secure workspace access</span>
+        </div>
+      </section>
+
+      <section className="relative flex min-h-screen items-center justify-center px-5 py-10 sm:px-10 lg:px-14">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-700 via-brand-500 to-orange-400 lg:hidden" />
+        <div className="w-full max-w-md animate-fade-up">
+          <div className="mb-10 flex items-center justify-between lg:hidden">
+            <img src={logo} alt="Supply.ai" className="h-11 w-auto" />
+            <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm">RFQ Portal</span>
+          </div>
+
+          <div className="mb-8">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[.2em] text-brand-600">Welcome back</p>
+            <h1 className="text-4xl font-semibold tracking-tight text-ink">Login to your workspace</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-500">Enter your account details to continue managing vendors and outreach.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            <label className="block text-sm font-semibold text-slate-700">
+              Email address
+              <span className="relative mt-2 block">
+                <Mail size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="email" placeholder="you@company.com" value={userData.user_mail}
+                  onChange={handleChange} name="user_mail" autoComplete="email"
+                  className="focus-ring w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm shadow-sm placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500"
+                />
+              </span>
+            </label>
+
+            <label className="block text-sm font-semibold text-slate-700">
+              Password
+              <span className="relative mt-2 block">
+                <LockKeyhole size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type={showPassword ? 'text' : 'password'} placeholder="Enter your password"
+                  value={userData.user_password} onChange={handleChange} name="user_password"
+                  autoComplete="current-password"
+                  className="focus-ring w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-12 text-sm shadow-sm placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500"
+                />
+                <button
+                  type="button" onClick={() => setShowPassword((visible) => !visible)}
+                  className="focus-ring absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                </button>
+              </span>
+            </label>
+
+            <button type="submit" className="primary-button group mt-2 w-full py-3.5" disabled={loading}>
+              {loading
+                ? <><ClipLoader color="#ffffff" size={18} /> Signing you in…</>
+                : <>Login securely <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" /></>}
+            </button>
+          </form>
+
+          <p className="mt-8 text-center text-xs leading-5 text-slate-400">
+            Protected access for authorized procurement teams.
+          </p>
+        </div>
+      </section>
+    </main>
   );
 }
-//d4a200,fdc500
+
 export default Login;

@@ -12,6 +12,7 @@ client.interceptors.request.use((config) => {
 export const listVendors = () => client.get('/');
 export const prepareVendors = (source) => client.post('/prepare', source);
 export const saveVendors = (vendors) => client.post('/', { vendors });
+export const initiateVendorCall = (callRequest) => client.post('/calls', callRequest);
 
 export function apiError(error, fallback) {
   return error?.response?.data?.error || error?.message || fallback;

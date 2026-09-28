@@ -14,7 +14,7 @@ function getPool() {
   return pool;
 }
 
-const columns = 'id, name, business_type AS "businessType", contact, phone, email, location, status';
+const columns = 'id, name, business_type AS "businessType", contact, phone, whatsapp, email, location, status';
 
 async function listVendors(userId) {
   const result = await getPool().query(
@@ -31,10 +31,10 @@ async function saveVendors(userId, vendors) {
     const saved = [];
     for (const vendor of vendors) {
       const result = await client.query(
-        `INSERT INTO vendors (owner_id, name, business_type, contact, phone, email, location, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING ${columns}`,
+        `INSERT INTO vendors (owner_id, name, business_type, contact, phone, whatsapp, email, location, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ${columns}`,
         [userId, vendor.name, vendor.businessType, vendor.contact, vendor.phone,
-          vendor.email, vendor.location, vendor.status]
+          vendor.whatsapp, vendor.email, vendor.location, vendor.status]
       );
       saved.push(result.rows[0]);
     }
@@ -48,4 +48,4 @@ async function saveVendors(userId, vendors) {
   }
 }
 
-module.exports = { listVendors, saveVendors };
+module.exports = { getPool, listVendors, saveVendors };

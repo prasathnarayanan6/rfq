@@ -7,7 +7,8 @@ const HEADER_ALIASES = {
   name: ['vendor', 'vendorname', 'name', 'company', 'companyname'],
   businessType: ['businesstype', 'category', 'type'],
   contact: ['contact', 'contactperson', 'contactname'],
-  phone: ['phone', 'phonenumber', 'mobile', 'mobilenumber', 'whatsapp', 'whatsappnumber'],
+  phone: ['phone', 'phonenumber', 'contactnumber', 'mobile', 'mobilenumber'],
+  whatsapp: ['whatsapp', 'whatsappnumber', 'whatsappno'],
   email: ['email', 'emailaddress'],
   location: ['location', 'city', 'address'],
 };
@@ -41,9 +42,10 @@ function basicDraft(entry, headers, categories) {
   const vendor = {
     name: get('name', 0), businessType,
     contact: headers?.contact === undefined ? '' : get('contact', 2),
-    phone: headers?.phone === undefined ? phone : get('phone', 3) || phone,
-    email: headers?.email === undefined ? email : get('email', 4) || email,
-    location: headers?.location === undefined ? '' : get('location', 5),
+    phone: headers?.phone === undefined ? (headers?.whatsapp === undefined ? phone : '') : get('phone', 3),
+    whatsapp: headers?.whatsapp === undefined ? '' : get('whatsapp', 4),
+    email: headers?.email === undefined ? email : get('email', 5) || email,
+    location: headers?.location === undefined ? '' : get('location', 6),
   };
   const draft = makeDraft({ ...vendor, uncertainType: !businessType }, [entry.source], entry.index);
   draft.warnings.unshift('AI unavailable; basic cleanup only. Check all details');
@@ -98,6 +100,10 @@ function makeDraft(item, source, index) {
     vendor.phone = '';
     warnings.push('Agent phone was absent from the source; add it manually if correct');
   }
+  if (!hasSourceContact(vendor.whatsapp, source, 'phone')) {
+    vendor.whatsapp = '';
+    warnings.push('Agent WhatsApp number was absent from the source; add it manually if correct');
+  }
   if (item.uncertainType || !vendor.businessType) warnings.push('Check the business type');
   return {
     draftId: `draft-${index}`,
@@ -113,7 +119,7 @@ async function organizeChunk(entries, categories, headers) {
   }
   try {
   const client = new BedrockRuntimeClient({ region: process.env.AWS_REGION });
-  const prompt = `Organize a messy vendor list into JSON. Return ONLY {"vendors":[{"sourceIndices":[0],"name":"","businessType":"","contact":"","phone":"","email":"","location":"","uncertainType":false}]}.
+  const prompt = `Organize a messy vendor list into JSON. Return ONLY {"vendors":[{"sourceIndices":[0],"name":"","businessType":"","contact":"","phone":"","whatsapp":"","email":"","location":"","uncertainType":false}]}.
 Entries may be spreadsheet rows or lines of pasted text. Spreadsheet column positions are ${JSON.stringify(headers || {})}. Combine adjacent lines only when they clearly describe the same vendor. Include every vendor you find. Put sourceIndices in each result using the indices supplied below. Do not invent names, contact details, or categories. Leave uncertain fields empty and set uncertainType true when classification needs review. Standardize business types against these existing categories when appropriate; otherwise use a concise new business category: ${JSON.stringify(categories)}.
 Source entries: ${JSON.stringify(entries)}`;
   const result = await client.send(new ConverseCommand({
