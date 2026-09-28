@@ -74,10 +74,33 @@ CREATE TABLE IF NOT EXISTS vendor_quotes (
   delivery_days integer,
   payment_terms text NOT NULL DEFAULT '',
   raw_text text NOT NULL,
+  subtotal numeric(18, 2),
+  discount_amount numeric(18, 2),
+  tax_amount numeric(18, 2),
+  shipping_amount numeric(18, 2),
+  other_charges numeric(18, 2),
+  availability text NOT NULL DEFAULT '',
+  confidence numeric(4, 3),
+  needs_review boolean NOT NULL DEFAULT false,
+  detected_language text NOT NULL DEFAULT '',
+  english_summary text NOT NULL DEFAULT '',
   status text NOT NULL DEFAULT 'Received' CHECK (status IN ('Received', 'Reviewed', 'Shortlisted', 'Rejected')),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE vendor_quotes ADD COLUMN IF NOT EXISTS subtotal numeric(18, 2);
+ALTER TABLE vendor_quotes ADD COLUMN IF NOT EXISTS discount_amount numeric(18, 2);
+ALTER TABLE vendor_quotes ADD COLUMN IF NOT EXISTS tax_amount numeric(18, 2);
+ALTER TABLE vendor_quotes ADD COLUMN IF NOT EXISTS shipping_amount numeric(18, 2);
+ALTER TABLE vendor_quotes ADD COLUMN IF NOT EXISTS other_charges numeric(18, 2);
+ALTER TABLE vendor_quotes ADD COLUMN IF NOT EXISTS availability text NOT NULL DEFAULT '';
+ALTER TABLE vendor_quotes ADD COLUMN IF NOT EXISTS confidence numeric(4, 3);
+ALTER TABLE vendor_quotes ADD COLUMN IF NOT EXISTS needs_review boolean NOT NULL DEFAULT false;
+ALTER TABLE vendor_quotes ADD COLUMN IF NOT EXISTS detected_language text NOT NULL DEFAULT '';
+ALTER TABLE vendor_quotes ADD COLUMN IF NOT EXISTS english_summary text NOT NULL DEFAULT '';
+
 CREATE INDEX IF NOT EXISTS vendor_quotes_owner_request_idx
   ON vendor_quotes (owner_id, request_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS vendor_quotes_current_unique_idx
+  ON vendor_quotes (owner_id, request_id, vendor_id, channel);
 ALTER TABLE vendor_quotes ENABLE ROW LEVEL SECURITY;

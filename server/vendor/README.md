@@ -22,6 +22,18 @@ uses that request ID to queue WhatsApp or email outreach, and stores every job i
 `/api/v1/vendors/outreach/:requestId/inbound`; quote-like replies are normalized
 into `vendor_quotes` for the dashboard comparison table.
 
+For quotation screenshots or photos, submit a multipart request to
+`/api/v1/vendors/outreach/:requestId/inbound-media` with the file in the `attachment`
+field plus `vendorId`, optional caption `body`, and optional `providerMessageId`.
+JPG, PNG, GIF, WebP, and PDF attachments up to 6 MB are accepted. Claude analyzes the
+attachment, recent conversation, and any Tanglish/code-mixed caption together; raw bytes are not
+persisted after analysis.
+
+`GET /api/v1/vendors/outreach/:requestId/conversation?vendorId=...` returns the
+stored thread and agent metadata for review. One current quote is maintained per
+request, vendor, and channel; a revised quote updates the comparison row while
+the original messages remain in the conversation history.
+
 WhatsApp delivery becomes provider-ready when `WHATSAPP_ACCESS_TOKEN` and
 `WHATSAPP_PHONE_NUMBER_ID` are set. Email delivery becomes provider-ready when
 `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASSWORD` are set. Until then, outbound jobs

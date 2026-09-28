@@ -1,4 +1,5 @@
 const PROVIDER_ENV = ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID'];
+const { analyzeInbound, isAiConfigured } = require('./agent');
 
 function isConfigured() {
   return PROVIDER_ENV.every((name) => Boolean(process.env[name]));
@@ -15,4 +16,4 @@ function buildMessage({ vendorName, requirements, requestId }) {
   ].join('\n');
 }
 
-module.exports = { buildMessage, isConfigured };
+module.exports = { analyzeInbound, buildMessage, isAiConfigured, isConfigured };

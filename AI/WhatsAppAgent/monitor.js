@@ -8,10 +8,11 @@ function extractQuote(message = '') {
   const currency = /(?:₹|\bINR\b|\bRs\.?)/i.test(text) ? 'INR'
     : /(?:\$|\bUSD\b)/i.test(text) ? 'USD'
       : /(?:€|\bEUR\b)/i.test(text) ? 'EUR' : '';
-  const totalAmount = numberFrom(text, /(?:total|amount|price|quote|₹|\bINR\b|\bRs\.?|\$|\bUSD\b)\s*[:=-]?\s*(?:₹|\$|€|INR|USD|EUR|Rs\.?)?\s*([\d,]+(?:\.\d{1,2})?)/i);
-  const deliveryDays = numberFrom(text, /(?:delivery|deliver|dispatch|lead\s*time)[^\d]{0,20}(\d+)\s*(?:business\s*)?days?/i);
-  const paymentMatch = text.match(/(?:payment\s*terms?|terms?)\s*[:=-]\s*([^\n.;]+)/i);
-  const looksLikeQuote = Boolean(currency || totalAmount || deliveryDays || /quotation|quote|pricing|per\s+(?:unit|piece|kg)/i.test(text));
+  const totalAmount = numberFrom(text, /(?:total|amount|price|quote|quotation|motham|vilai|rate|₹|\bINR\b|\bRs\.?|rooba|rupees?|\$|\bUSD\b)\s*[:=-]?\s*(?:₹|\$|€|INR|USD|EUR|Rs\.?)?\s*([\d,]+(?:\.\d{1,2})?)/i);
+  const deliveryDays = numberFrom(text, /(?:delivery|deliver|dispatch|lead\s*time)[^\d]{0,20}(\d+)\s*(?:business\s*)?(?:days?|naal)/i)
+    || numberFrom(text, /(\d+)\s*(?:days?|naal)(?:\s*(?:la|il|kulla|within))?/i);
+  const paymentMatch = text.match(/(?:payment\s*terms?|terms?|payment|advance)\s*[:=-]?\s*([^\n.;]+)/i);
+  const looksLikeQuote = Boolean(currency || totalAmount || deliveryDays || /quotation|quote|pricing|per\s+(?:unit|piece|kg)|motham|vilai|rooba/i.test(text));
 
   if (!looksLikeQuote) return null;
   return {

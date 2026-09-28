@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const { requireUser } = require('./auth');
 const { validateVendor } = require('./validation');
 const { listVendors, saveVendors, updateVendor } = require('./store');
@@ -6,9 +7,16 @@ const { prepareDrafts } = require('./organize');
 const { validateCallRequest } = require('./callValidation');
 const { createCallRequest } = require('./callStore');
 const { validateOutbound, validateInbound } = require('./outreachValidation');
-const { listOutreachRequests, queueOutbound, recordInbound, listQuotes } = require('./outreachStore');
+const { listConversation, listOutreachRequests, queueOutbound, recordInbound, listQuotes } = require('./outreachStore');
 
 const router = express.Router();
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 6 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, callback) => callback(null, [
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf',
+  ].includes(file.mimetype)),
+});
 router.use(requireUser);
 
 router.get('/', async (req, res) => {
@@ -33,6 +41,16 @@ router.get('/outreach/quotes', async (req, res) => {
     return res.json({ quotes: await listQuotes(req.vendorUserId, requestId) });
   } catch (_error) {
     return res.status(503).json({ error: 'Vendor quotations are unavailable' });
+  }
+});
+
+router.get('/outreach/:requestId/conversation', async (req, res) => {
+  const vendorId = String(req.query.vendorId || '').trim();
+  if (!/^\d+$/.test(vendorId)) return res.status(400).json({ error: 'Choose a valid vendor' });
+  try {
+    return res.json({ messages: await listConversation(req.vendorUserId, req.params.requestId, vendorId) });
+  } catch (_error) {
+    return res.status(503).json({ error: 'The vendor conversation is unavailable' });
   }
 });
 
@@ -64,6 +82,27 @@ router.post('/outreach/:requestId/inbound', async (req, res) => {
     if (error.code === 'REQUEST_NOT_FOUND') return res.status(404).json({ error: error.message });
     return res.status(503).json({ error: 'Inbound message could not be processed' });
   }
+});
+
+router.post('/outreach/:requestId/inbound-media', (req, res) => {
+  imageUpload.fields([{ name: 'attachment', maxCount: 1 }, { name: 'image', maxCount: 1 }])(req, res, async (uploadError) => {
+    if (uploadError) return res.status(400).json({ error: uploadError.message || 'The quotation image could not be uploaded' });
+    const file = req.files?.attachment?.[0] || req.files?.image?.[0];
+    if (!file) return res.status(400).json({ error: 'Attach a JPG, PNG, GIF, WebP, or PDF quotation' });
+    const checked = validateInbound({ ...req.body, channel: 'whatsapp' }, { hasAttachment: true });
+    if (Object.keys(checked.errors).length) {
+      return res.status(400).json({ error: 'Inbound message is invalid', errors: checked.errors });
+    }
+    try {
+      return res.status(201).json(await recordInbound(req.vendorUserId, req.params.requestId, {
+        ...checked.value,
+        attachment: { bytes: file.buffer, mediaType: file.mimetype, fileName: file.originalname },
+      }));
+    } catch (error) {
+      if (error.code === 'REQUEST_NOT_FOUND') return res.status(404).json({ error: error.message });
+      return res.status(503).json({ error: 'Quotation attachment could not be processed' });
+    }
+  });
 });
 
 router.post('/prepare', async (req, res) => {

@@ -12,7 +12,7 @@ function validateOutbound(input = {}) {
   return { value: { channel, message, vendorIds }, errors };
 }
 
-function validateInbound(input = {}) {
+function validateInbound(input = {}, { hasAttachment = false, hasImage = false } = {}) {
   const channel = String(input.channel || '').toLowerCase().trim();
   const vendorId = String(input.vendorId || '').trim();
   const body = String(input.body || '').trim();
@@ -20,7 +20,7 @@ function validateInbound(input = {}) {
   const errors = {};
   if (!CHANNELS.has(channel)) errors.channel = 'Choose WhatsApp or email';
   if (!/^\d+$/.test(vendorId)) errors.vendorId = 'Choose a valid vendor';
-  if (!body || body.length > 20000) errors.body = 'Reply text is required and must be under 20000 characters';
+  if ((!body && !hasAttachment && !hasImage) || body.length > 20000) errors.body = 'Reply text or an attachment is required; text must be under 20000 characters';
   return { value: { channel, vendorId, body, providerMessageId }, errors };
 }
 

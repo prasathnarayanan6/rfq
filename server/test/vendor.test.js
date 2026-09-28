@@ -7,6 +7,7 @@ const { requireUser } = require('../vendor/auth');
 const { validateCallRequest } = require('../vendor/callValidation');
 const { validateOutbound, validateInbound } = require('../vendor/outreachValidation');
 const { extractQuote } = require('../../AI/WhatsAppAgent/monitor');
+const { documentFormat, imageFormat, normalizeAnalysis } = require('../../AI/WhatsAppAgent/agent');
 
 test('vendor minimum is name, business type, and one valid contact route', () => {
   const valid = validateVendor({ name: '  Bright Tools ', businessType: 'Hardware', email: 'sales@example.com' });
@@ -73,6 +74,7 @@ test('outreach messages require a supported channel, recipients, and useful cont
   assert.deepEqual(valid.value.vendorIds, ['2', '4']);
   assert.ok(validateOutbound({ channel: 'sms', vendorIds: [], message: 'Hi' }).errors.channel);
   assert.deepEqual(validateInbound({ channel: 'email', vendorId: 2, body: 'Our quotation is attached.' }).errors, {});
+  assert.deepEqual(validateInbound({ channel: 'whatsapp', vendorId: 2, body: '' }, { hasImage: true }).errors, {});
   assert.ok(validateInbound({ channel: 'email', vendorId: 'bad', body: '' }).errors.vendorId);
 });
 
@@ -83,4 +85,24 @@ test('WhatsApp monitor extracts comparable quotation details from a reply', () =
   assert.equal(quote.deliveryDays, 12);
   assert.equal(quote.paymentTerms, '50% advance');
   assert.equal(extractQuote('Thank you, we will check and reply soon.'), null);
+});
+
+test('WhatsApp fallback understands basic Tanglish quote wording', () => {
+  const quote = extractQuote('Motham Rs 1,25,000. Delivery 12 naal la. Payment 50% advance, balance dispatch time.');
+  assert.equal(quote.totalAmount, 125000);
+  assert.equal(quote.deliveryDays, 12);
+  assert.match(quote.paymentTerms, /50% advance/i);
+});
+
+test('WhatsApp AI output is normalized before database storage', () => {
+  const analysis = normalizeAnalysis({
+    messageType: 'quote', detectedLanguage: 'Tanglish', englishSummary: 'Vendor quoted a total.',
+    isQuote: true, currency: '₹', totalAmount: '1,25,000', deliveryDays: '12', confidence: 1.4,
+  }, 'motham 1,25,000');
+  assert.equal(analysis.currency, 'INR');
+  assert.equal(analysis.totalAmount, 125000);
+  assert.equal(analysis.deliveryDays, 12);
+  assert.equal(analysis.confidence, 1);
+  assert.equal(imageFormat('image/jpeg'), 'jpeg');
+  assert.equal(documentFormat('application/pdf'), 'pdf');
 });

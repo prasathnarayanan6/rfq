@@ -2,7 +2,6 @@ const { randomUUID } = require('crypto');
 const { getPool } = require('./store');
 const WhatsAppAgent = require('../../AI/WhatsAppAgent');
 const MailAgent = require('../../AI/MailAgent');
-const WhatsAppMonitor = require('../../AI/WhatsAppAgent/monitor');
 const MailMonitor = require('../../AI/MailAgent/monitor');
 
 async function listOutreachRequests(ownerId) {
@@ -97,7 +96,9 @@ async function queueOutbound(ownerId, requestId, outbound) {
 async function recordInbound(ownerId, requestId, inbound) {
   const database = getPool();
   const vendorResult = await database.query(
-    `SELECT vendor.id, vendor.name FROM vendors vendor
+    `SELECT vendor.id, vendor.name, request.business_type AS "businessType",
+            request.conversation_brief AS requirements
+     FROM vendors vendor
      JOIN vendor_call_requests request ON request.id = $1 AND request.owner_id = $2
      WHERE vendor.id = $3 AND vendor.owner_id = $2
        AND EXISTS (SELECT 1 FROM jsonb_array_elements(request.vendors) item WHERE item->>'id' = vendor.id::text)`,
@@ -109,34 +110,115 @@ async function recordInbound(ownerId, requestId, inbound) {
     throw error;
   }
   const vendor = vendorResult.rows[0];
+  const conversationResult = await database.query(
+    `SELECT direction, body, metadata->'analysis'->>'englishSummary' AS summary
+     FROM vendor_outreach_messages
+     WHERE owner_id = $1 AND request_id = $2 AND vendor_id = $3 AND channel = $4
+     ORDER BY created_at DESC LIMIT 20`,
+    [ownerId, requestId, vendor.id, inbound.channel]
+  );
+  const conversation = conversationResult.rows.reverse();
+  let analysis;
+  let extracted;
+  if (inbound.channel === 'whatsapp') {
+    analysis = await WhatsAppAgent.analyzeInbound({
+      text: inbound.body,
+      attachment: inbound.attachment || inbound.image,
+      conversation,
+      request: { businessType: vendor.businessType, requirements: vendor.requirements },
+      vendorName: vendor.name,
+    });
+    extracted = analysis.isQuote ? {
+      currency: analysis.currency,
+      totalAmount: analysis.totalAmount,
+      deliveryDays: analysis.deliveryDays,
+      paymentTerms: analysis.paymentTerms,
+      rawText: inbound.body || analysis.englishSummary,
+    } : null;
+  } else {
+    extracted = MailMonitor.extractQuote(inbound.body);
+    analysis = extracted ? { ...extracted, isQuote: true, messageType: 'quote', source: 'text-parser' }
+      : { isQuote: false, messageType: 'other', source: 'text-parser' };
+  }
   const messageId = randomUUID();
+  const attachment = inbound.attachment || inbound.image;
+  const metadata = {
+    analysis,
+    ...(attachment ? { attachment: {
+      fileName: attachment.fileName,
+      mediaType: attachment.mediaType,
+      size: attachment.bytes.length,
+    } } : {}),
+  };
   const messageResult = await database.query(
     `INSERT INTO vendor_outreach_messages
-       (id, owner_id, request_id, vendor_id, vendor_name, channel, direction, body, provider_message_id, status)
-     VALUES ($1, $2, $3, $4, $5, $6, 'inbound', $7, $8, 'Received')
+       (id, owner_id, request_id, vendor_id, vendor_name, channel, direction, body, provider_message_id, status, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, 'inbound', $7, $8, 'Received', $9)
      RETURNING id, request_id AS "requestId", vendor_id AS "vendorId", vendor_name AS "vendorName",
                channel, direction, body, status, created_at AS "createdAt"`,
-    [messageId, ownerId, requestId, vendor.id, vendor.name, inbound.channel, inbound.body, inbound.providerMessageId]
+    [messageId, ownerId, requestId, vendor.id, vendor.name, inbound.channel,
+      inbound.body || analysis.englishSummary, inbound.providerMessageId, metadata]
   );
 
-  const monitor = inbound.channel === 'email' ? MailMonitor : WhatsAppMonitor;
-  const extracted = monitor.extractQuote(inbound.body);
   let quote = null;
   if (extracted) {
     const quoteResult = await database.query(
       `INSERT INTO vendor_quotes
          (id, owner_id, request_id, vendor_id, vendor_name, channel, source_message_id,
-          currency, total_amount, delivery_days, payment_terms, raw_text)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          currency, total_amount, delivery_days, payment_terms, raw_text, subtotal,
+          discount_amount, tax_amount, shipping_amount, other_charges, availability,
+          confidence, needs_review, detected_language, english_summary)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+               $15, $16, $17, $18, $19, $20, $21, $22)
+       ON CONFLICT (owner_id, request_id, vendor_id, channel) DO UPDATE SET
+         source_message_id = EXCLUDED.source_message_id,
+         vendor_name = EXCLUDED.vendor_name,
+         currency = EXCLUDED.currency,
+         total_amount = EXCLUDED.total_amount,
+         delivery_days = EXCLUDED.delivery_days,
+         payment_terms = EXCLUDED.payment_terms,
+         raw_text = EXCLUDED.raw_text,
+         subtotal = EXCLUDED.subtotal,
+         discount_amount = EXCLUDED.discount_amount,
+         tax_amount = EXCLUDED.tax_amount,
+         shipping_amount = EXCLUDED.shipping_amount,
+         other_charges = EXCLUDED.other_charges,
+         availability = EXCLUDED.availability,
+         confidence = EXCLUDED.confidence,
+         needs_review = EXCLUDED.needs_review,
+         detected_language = EXCLUDED.detected_language,
+         english_summary = EXCLUDED.english_summary,
+         status = 'Received',
+         created_at = now()
        RETURNING id, request_id AS "requestId", vendor_id AS "vendorId", vendor_name AS "vendorName",
                  channel, currency, total_amount AS "totalAmount", delivery_days AS "deliveryDays",
-                 payment_terms AS "paymentTerms", raw_text AS "rawText", status, created_at AS "createdAt"`,
+                 payment_terms AS "paymentTerms", raw_text AS "rawText", subtotal,
+                 discount_amount AS "discountAmount", tax_amount AS "taxAmount",
+                 shipping_amount AS "shippingAmount", other_charges AS "otherCharges",
+                 availability, confidence, needs_review AS "needsReview",
+                 detected_language AS "detectedLanguage", english_summary AS "englishSummary",
+                 status, created_at AS "createdAt"`,
       [randomUUID(), ownerId, requestId, vendor.id, vendor.name, inbound.channel, messageId,
-        extracted.currency, extracted.totalAmount, extracted.deliveryDays, extracted.paymentTerms, extracted.rawText]
+        extracted.currency, extracted.totalAmount, extracted.deliveryDays, extracted.paymentTerms, extracted.rawText,
+        analysis.subtotal, analysis.discountAmount, analysis.taxAmount, analysis.shippingAmount,
+        analysis.otherCharges, analysis.availability || '', analysis.confidence, Boolean(analysis.needsReview),
+        analysis.detectedLanguage || '', analysis.englishSummary || '']
     );
     quote = quoteResult.rows[0];
   }
-  return { message: messageResult.rows[0], quote };
+  return { message: messageResult.rows[0], analysis, quote };
+}
+
+async function listConversation(ownerId, requestId, vendorId) {
+  const result = await getPool().query(
+    `SELECT id, vendor_id AS "vendorId", vendor_name AS "vendorName", channel, direction,
+            subject, body, status, metadata, created_at AS "createdAt"
+     FROM vendor_outreach_messages
+     WHERE owner_id = $1 AND request_id = $2 AND vendor_id = $3
+     ORDER BY created_at ASC`,
+    [ownerId, requestId, vendorId]
+  );
+  return result.rows;
 }
 
 async function listQuotes(ownerId, requestId = '') {
@@ -151,6 +233,10 @@ async function listQuotes(ownerId, requestId = '') {
             quote.vendor_name AS "vendorName", quote.channel, quote.currency,
             quote.total_amount AS "totalAmount", quote.delivery_days AS "deliveryDays",
             quote.payment_terms AS "paymentTerms", quote.raw_text AS "rawText",
+            quote.subtotal, quote.discount_amount AS "discountAmount", quote.tax_amount AS "taxAmount",
+            quote.shipping_amount AS "shippingAmount", quote.other_charges AS "otherCharges",
+            quote.availability, quote.confidence, quote.needs_review AS "needsReview",
+            quote.detected_language AS "detectedLanguage", quote.english_summary AS "englishSummary",
             quote.status, quote.created_at AS "createdAt", request.business_type AS "businessType"
      FROM vendor_quotes quote
      JOIN vendor_call_requests request ON request.id = quote.request_id
@@ -161,4 +247,4 @@ async function listQuotes(ownerId, requestId = '') {
   return result.rows;
 }
 
-module.exports = { listOutreachRequests, queueOutbound, recordInbound, listQuotes };
+module.exports = { listConversation, listOutreachRequests, queueOutbound, recordInbound, listQuotes };

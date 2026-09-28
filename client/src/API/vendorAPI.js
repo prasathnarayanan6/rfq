@@ -18,6 +18,13 @@ export const listOutreachRequests = () => client.get('/outreach/requests');
 export const listQuotes = (requestId = '') => client.get('/outreach/quotes', { params: requestId ? { requestId } : {} });
 export const queueOutreach = (requestId, outreach) => client.post(`/outreach/${requestId}/send`, outreach);
 export const recordInboundMessage = (requestId, message) => client.post(`/outreach/${requestId}/inbound`, message);
+export const recordInboundImage = (requestId, image, fields = {}) => {
+  const form = new FormData();
+  form.append('attachment', image);
+  Object.entries(fields).forEach(([key, value]) => form.append(key, value));
+  return client.post(`/outreach/${requestId}/inbound-media`, form);
+};
+export const listVendorConversation = (requestId, vendorId) => client.get(`/outreach/${requestId}/conversation`, { params: { vendorId } });
 
 export function apiError(error, fallback) {
   return error?.response?.data?.error || error?.message || fallback;
