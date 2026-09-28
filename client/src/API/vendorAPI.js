@@ -12,7 +12,12 @@ client.interceptors.request.use((config) => {
 export const listVendors = () => client.get('/');
 export const prepareVendors = (source) => client.post('/prepare', source);
 export const saveVendors = (vendors) => client.post('/', { vendors });
+export const updateVendor = (vendorId, vendor) => client.patch(`/${vendorId}`, { vendor });
 export const initiateVendorCall = (callRequest) => client.post('/calls', callRequest);
+export const listOutreachRequests = () => client.get('/outreach/requests');
+export const listQuotes = (requestId = '') => client.get('/outreach/quotes', { params: requestId ? { requestId } : {} });
+export const queueOutreach = (requestId, outreach) => client.post(`/outreach/${requestId}/send`, outreach);
+export const recordInboundMessage = (requestId, message) => client.post(`/outreach/${requestId}/inbound`, message);
 
 export function apiError(error, fallback) {
   return error?.response?.data?.error || error?.message || fallback;

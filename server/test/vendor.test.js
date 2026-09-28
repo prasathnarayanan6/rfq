@@ -5,6 +5,8 @@ const { validateVendor, duplicateKey } = require('../vendor/validation');
 const { sourceEntries, makeDraft, basicDraft, headingMap } = require('../vendor/organize');
 const { requireUser } = require('../vendor/auth');
 const { validateCallRequest } = require('../vendor/callValidation');
+const { validateOutbound, validateInbound } = require('../vendor/outreachValidation');
+const { extractQuote } = require('../../AI/WhatsAppAgent/monitor');
 
 test('vendor minimum is name, business type, and one valid contact route', () => {
   const valid = validateVendor({ name: '  Bright Tools ', businessType: 'Hardware', email: 'sales@example.com' });
@@ -63,4 +65,22 @@ test('call requests require a business type, eligible vendor IDs, and a useful b
   assert.ok(invalid.errors.businessType);
   assert.ok(invalid.errors.vendorIds);
   assert.ok(invalid.errors.conversationBrief);
+});
+
+test('outreach messages require a supported channel, recipients, and useful content', () => {
+  const valid = validateOutbound({ channel: 'whatsapp', vendorIds: [2, '2', 4], message: 'Please send pricing and delivery terms.' });
+  assert.deepEqual(valid.errors, {});
+  assert.deepEqual(valid.value.vendorIds, ['2', '4']);
+  assert.ok(validateOutbound({ channel: 'sms', vendorIds: [], message: 'Hi' }).errors.channel);
+  assert.deepEqual(validateInbound({ channel: 'email', vendorId: 2, body: 'Our quotation is attached.' }).errors, {});
+  assert.ok(validateInbound({ channel: 'email', vendorId: 'bad', body: '' }).errors.vendorId);
+});
+
+test('WhatsApp monitor extracts comparable quotation details from a reply', () => {
+  const quote = extractQuote('Quotation total: INR 125,000. Delivery in 12 days. Payment terms: 50% advance');
+  assert.equal(quote.currency, 'INR');
+  assert.equal(quote.totalAmount, 125000);
+  assert.equal(quote.deliveryDays, 12);
+  assert.equal(quote.paymentTerms, '50% advance');
+  assert.equal(extractQuote('Thank you, we will check and reply soon.'), null);
 });

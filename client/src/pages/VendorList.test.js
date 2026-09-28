@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import VendorList from './VendorList';
-import { initiateVendorCall, listVendors, prepareVendors, saveVendors } from '../API/vendorAPI';
+import { initiateVendorCall, listVendors, prepareVendors, saveVendors, updateVendor } from '../API/vendorAPI';
 
 jest.mock('../API/vendorAPI', () => ({
-  initiateVendorCall: jest.fn(), listVendors: jest.fn(), prepareVendors: jest.fn(), saveVendors: jest.fn(),
+  initiateVendorCall: jest.fn(), listVendors: jest.fn(), prepareVendors: jest.fn(), saveVendors: jest.fn(), updateVendor: jest.fn(),
   apiError: (error) => error.message,
 }));
 
@@ -11,6 +11,7 @@ beforeEach(() => {
   listVendors.mockResolvedValue({ data: { vendors: [] } });
   prepareVendors.mockReset();
   saveVendors.mockReset();
+  updateVendor.mockReset();
   initiateVendorCall.mockReset();
 });
 
@@ -46,6 +47,25 @@ test('manual entry keeps contact and WhatsApp numbers separate', async () => {
   fireEvent.click(within(dialog).getByRole('button', { name: /add vendor/i }));
   expect(await screen.findByText('Bright Tools')).toBeInTheDocument();
   expect(saveVendors).toHaveBeenCalledWith([expect.objectContaining({ name: 'Bright Tools', phone: '+91 98765 43210', whatsapp: '+91 91234 56789' })]);
+});
+
+test('existing vendor information can be edited without mixing contact channels', async () => {
+  const vendor = { id: 7, name: 'Bright Tools', businessType: 'Hardware', contact: 'Maya', phone: '+91 98765 43210', whatsapp: '+91 91234 56789', email: 'sales@bright.example', location: 'Chennai', status: 'Pending' };
+  listVendors.mockResolvedValue({ data: { vendors: [vendor] } });
+  updateVendor.mockResolvedValue({ data: { vendor: { ...vendor, phone: '+91 90000 11111', whatsapp: '+91 90000 22222', status: 'Approved' } } });
+  render(<VendorList />);
+  await screen.findByText('Bright Tools');
+  fireEvent.click(screen.getByRole('button', { name: /edit bright tools/i }));
+  const dialog = screen.getByRole('dialog');
+  expect(within(dialog).getByLabelText(/vendor name/i)).toHaveValue('Bright Tools');
+  fireEvent.change(within(dialog).getByLabelText(/contact number/i), { target: { value: '+91 90000 11111' } });
+  fireEvent.change(within(dialog).getByLabelText(/whatsapp number/i), { target: { value: '+91 90000 22222' } });
+  fireEvent.change(within(dialog).getByLabelText(/approval status/i), { target: { value: 'Approved' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: /save changes/i }));
+  await waitFor(() => expect(updateVendor).toHaveBeenCalledWith(7, expect.objectContaining({
+    name: 'Bright Tools', phone: '+91 90000 11111', whatsapp: '+91 90000 22222', status: 'Approved',
+  })));
+  expect(await screen.findByText(/bright tools was updated successfully/i)).toBeInTheDocument();
 });
 
 test('bulk review keeps possible duplicates for explicit resolution before saving', async () => {

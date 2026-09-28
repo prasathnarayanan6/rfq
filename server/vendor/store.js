@@ -48,4 +48,17 @@ async function saveVendors(userId, vendors) {
   }
 }
 
-module.exports = { getPool, listVendors, saveVendors };
+async function updateVendor(userId, vendorId, vendor) {
+  const result = await getPool().query(
+    `UPDATE vendors
+     SET name = $3, business_type = $4, contact = $5, phone = $6,
+         whatsapp = $7, email = $8, location = $9, status = $10
+     WHERE id = $1 AND owner_id = $2
+     RETURNING ${columns}`,
+    [vendorId, userId, vendor.name, vendor.businessType, vendor.contact, vendor.phone,
+      vendor.whatsapp, vendor.email, vendor.location, vendor.status]
+  );
+  return result.rows[0] || null;
+}
+
+module.exports = { getPool, listVendors, saveVendors, updateVendor };

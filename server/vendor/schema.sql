@@ -37,3 +37,47 @@ CREATE INDEX IF NOT EXISTS vendor_call_requests_owner_created_idx
   ON vendor_call_requests (owner_id, created_at DESC);
 
 ALTER TABLE vendor_call_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS vendor_outreach_messages (
+  id uuid PRIMARY KEY,
+  owner_id text NOT NULL,
+  request_id uuid NOT NULL REFERENCES vendor_call_requests(id) ON DELETE CASCADE,
+  vendor_id bigint NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+  vendor_name text NOT NULL,
+  channel text NOT NULL CHECK (channel IN ('whatsapp', 'email')),
+  direction text NOT NULL CHECK (direction IN ('outbound', 'inbound')),
+  subject text NOT NULL DEFAULT '',
+  body text NOT NULL,
+  provider_message_id text NOT NULL DEFAULT '',
+  status text NOT NULL CHECK (status IN ('Queued', 'Awaiting Provider', 'Sent', 'Delivered', 'Received', 'Failed')),
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS vendor_outreach_owner_request_idx
+  ON vendor_outreach_messages (owner_id, request_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS vendor_outreach_provider_message_idx
+  ON vendor_outreach_messages (provider_message_id)
+  WHERE provider_message_id <> '';
+ALTER TABLE vendor_outreach_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS vendor_quotes (
+  id uuid PRIMARY KEY,
+  owner_id text NOT NULL,
+  request_id uuid NOT NULL REFERENCES vendor_call_requests(id) ON DELETE CASCADE,
+  vendor_id bigint NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+  vendor_name text NOT NULL,
+  channel text NOT NULL CHECK (channel IN ('whatsapp', 'email', 'manual')),
+  source_message_id uuid REFERENCES vendor_outreach_messages(id) ON DELETE SET NULL,
+  currency text NOT NULL DEFAULT 'INR',
+  total_amount numeric(18, 2),
+  delivery_days integer,
+  payment_terms text NOT NULL DEFAULT '',
+  raw_text text NOT NULL,
+  status text NOT NULL DEFAULT 'Received' CHECK (status IN ('Received', 'Reviewed', 'Shortlisted', 'Rejected')),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS vendor_quotes_owner_request_idx
+  ON vendor_quotes (owner_id, request_id, created_at DESC);
+ALTER TABLE vendor_quotes ENABLE ROW LEVEL SECURITY;

@@ -16,6 +16,17 @@ Run `npm run vendors:check` to inspect the database table and
 the server API. Uploaded lists are prepared in memory and saved only after the
 user reviews and confirms selected rows.
 
+Each initiated vendor call creates a `vendor_call_requests` record. The dashboard
+uses that request ID to queue WhatsApp or email outreach, and stores every job in
+`vendor_outreach_messages`. Verified inbound provider adapters can post replies to
+`/api/v1/vendors/outreach/:requestId/inbound`; quote-like replies are normalized
+into `vendor_quotes` for the dashboard comparison table.
+
+WhatsApp delivery becomes provider-ready when `WHATSAPP_ACCESS_TOKEN` and
+`WHATSAPP_PHONE_NUMBER_ID` are set. Email delivery becomes provider-ready when
+`SMTP_HOST`, `SMTP_USER`, and `SMTP_PASSWORD` are set. Until then, outbound jobs
+remain persisted with `Awaiting Provider` status and no external message is sent.
+
 The organizer uses `AWS_REGION`, `BEDROCK_MODEL_ID`, and the AWS credentials
 used by the quote agent. Local development also loads `AI/QuoteAgent/.env` if
 those settings are absent from `server/.env`. If Bedrock is unavailable, drafts

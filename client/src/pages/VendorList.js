@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bot, Building2, Check, Clock3, Download, FileSpreadsheet, Mail, MapPin, MessageSquareText, Phone, PhoneCall, Plus, Search, ShieldCheck, Sparkles, Upload, UploadCloud, UserPlus, Users, Wand2, X } from 'lucide-react';
+import { Bot, Building2, Check, Clock3, Download, FileSpreadsheet, Mail, MapPin, MessageSquareText, PencilLine, Phone, PhoneCall, Plus, Search, ShieldCheck, Sparkles, Upload, UploadCloud, UserPlus, Users, Wand2, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { apiError, initiateVendorCall, listVendors, prepareVendors, saveVendors } from '../API/vendorAPI';
+import { apiError, initiateVendorCall, listVendors, prepareVendors, saveVendors, updateVendor } from '../API/vendorAPI';
 import { rowsFromFile, validateVendor } from './vendorImport';
 
 const emptyVendor = { name: '', businessType: '', contact: '', phone: '', whatsapp: '', email: '', location: '', status: 'Pending' };
@@ -150,6 +150,7 @@ function VendorList() {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(null);
   const [newVendor, setNewVendor] = useState(emptyVendor);
+  const [editingVendorId, setEditingVendorId] = useState(null);
   const [errors, setErrors] = useState({});
   const [pasteText, setPasteText] = useState('');
   const [drafts, setDrafts] = useState([]);
@@ -188,7 +189,17 @@ function VendorList() {
   const closeModal = () => {
     if (saving || preparing || callSubmitting) return;
     setModal(null); setNewVendor(emptyVendor); setErrors({}); setDrafts([]); setPasteText('');
+    setEditingVendorId(null);
     setCallForm({ businessType: '', vendorIds: [], conversationBrief: '' }); setCallErrors({});
+  };
+
+  const openEditModal = (vendor) => {
+    setNewVendor({
+      name: vendor.name || '', businessType: vendor.businessType || '', contact: vendor.contact || '',
+      phone: vendor.phone || '', whatsapp: vendor.whatsapp || '', email: vendor.email || '',
+      location: vendor.location || '', status: vendor.status || 'Pending',
+    });
+    setEditingVendorId(vendor.id); setErrors({}); setNotice(null); setModal('edit');
   };
 
   const addVendor = async (event) => {
@@ -204,6 +215,21 @@ function VendorList() {
       setSaving(false); closeModal();
     } catch (error) {
       setNotice({ type: 'error', message: apiError(error, 'Could not save vendor') }); setSaving(false);
+    }
+  };
+
+  const editVendor = async (event) => {
+    event.preventDefault();
+    const nextErrors = validateVendor(newVendor);
+    if (Object.keys(nextErrors).length) return setErrors(nextErrors);
+    setSaving(true);
+    try {
+      const { data } = await updateVendor(editingVendorId, newVendor);
+      setVendors((current) => current.map((vendor) => String(vendor.id) === String(editingVendorId) ? data.vendor : vendor));
+      setNotice({ type: 'success', message: `${data.vendor.name} was updated successfully.` });
+      setSaving(false); closeModal();
+    } catch (error) {
+      setNotice({ type: 'error', message: apiError(error, 'Could not update vendor') }); setSaving(false);
     }
   };
 
@@ -333,10 +359,10 @@ function VendorList() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-[1080px] w-full">
-            <thead><tr className="border-b border-slate-100 bg-slate-50/80">{['Vendor', 'Business Type', 'Contact Person', 'Contact Number', 'WhatsApp', 'Email', 'Location', 'Status'].map((heading) => <th key={heading} className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-[.08em] text-slate-500 first:sticky first:left-0 first:z-[1] first:bg-slate-50 sm:px-6">{heading}</th>)}</tr></thead>
+          <table className="min-w-[1180px] w-full">
+            <thead><tr className="border-b border-slate-100 bg-slate-50/80">{['Vendor', 'Business Type', 'Contact Person', 'Contact Number', 'WhatsApp', 'Email', 'Location', 'Status', 'Actions'].map((heading) => <th key={heading} className={`px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-[.08em] text-slate-500 sm:px-6 ${heading === 'Vendor' ? 'sticky left-0 z-[1] bg-slate-50' : ''} ${heading === 'Actions' ? 'sticky right-0 z-[1] bg-slate-50 text-right' : ''}`}>{heading}</th>)}</tr></thead>
             <tbody className="divide-y divide-slate-100">
-              {loading && [...Array(4)].map((_, index) => <tr key={index} className="animate-pulse">{[...Array(8)].map((__, cell) => <td key={cell} className="px-5 py-5 sm:px-6"><div className="h-3 w-24 rounded bg-slate-100" /></td>)}</tr>)}
+              {loading && [...Array(4)].map((_, index) => <tr key={index} className="animate-pulse">{[...Array(9)].map((__, cell) => <td key={cell} className="px-5 py-5 sm:px-6"><div className="h-3 w-24 rounded bg-slate-100" /></td>)}</tr>)}
               {!loading && visible.map((vendor) => (
                 <tr key={vendor.id} className="group transition hover:bg-slate-50/80">
                   <td className="sticky left-0 z-[1] bg-white px-5 py-4 group-hover:bg-slate-50 sm:px-6"><div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-600">{vendor.name?.[0]?.toUpperCase() || 'V'}</div><span className="max-w-48 truncate text-sm font-semibold text-slate-800">{vendor.name}</span></div></td>
@@ -347,6 +373,7 @@ function VendorList() {
                   <td className="px-5 py-4 text-sm sm:px-6">{vendor.email ? <a className="text-slate-600 hover:text-brand-600" href={`mailto:${vendor.email}`}>{vendor.email}</a> : <span className="text-slate-300">—</span>}</td>
                   <td className="px-5 py-4 text-sm text-slate-600 sm:px-6">{vendor.location || <span className="text-slate-300">—</span>}</td>
                   <td className="px-5 py-4 sm:px-6"><StatusBadge status={vendor.status} /></td>
+                  <td className="sticky right-0 z-[1] bg-white px-5 py-4 text-right group-hover:bg-slate-50 sm:px-6"><button type="button" onClick={() => openEditModal(vendor)} className="focus-ring inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700" aria-label={`Edit ${vendor.name}`}><PencilLine size={14} /> Edit</button></td>
                 </tr>
               ))}
             </tbody>
@@ -355,12 +382,12 @@ function VendorList() {
         </div>
       </div>
 
-      {modal === 'create' && <ActionModalShell eyebrow="Supplier onboarding" title="Add a new vendor" description="Build a complete supplier profile with the details your team needs for sourcing and outreach." icon={UserPlus} onClose={closeModal}>
-        <form onSubmit={addVendor} className="flex min-h-0 flex-1 flex-col">
+      {(modal === 'create' || modal === 'edit') && <ActionModalShell eyebrow={modal === 'edit' ? 'Vendor maintenance' : 'Supplier onboarding'} title={modal === 'edit' ? 'Edit vendor information' : 'Add a new vendor'} description={modal === 'edit' ? 'Keep supplier identity, contact channels, and approval status accurate for every workflow.' : 'Build a complete supplier profile with the details your team needs for sourcing and outreach.'} icon={modal === 'edit' ? PencilLine : UserPlus} onClose={closeModal}>
+        <form onSubmit={modal === 'edit' ? editVendor : addVendor} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="mb-4 flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3">
               <ShieldCheck size={18} className="mt-0.5 shrink-0 text-blue-600" />
-              <div><p className="text-sm font-semibold text-blue-950">Create a reliable vendor record</p><p className="mt-0.5 text-xs leading-5 text-blue-700">Vendor name, business type, and at least one contact route are required. You can complete the rest later.</p></div>
+              <div><p className="text-sm font-semibold text-blue-950">{modal === 'edit' ? 'Keep this vendor record reliable' : 'Create a reliable vendor record'}</p><p className="mt-0.5 text-xs leading-5 text-blue-700">Vendor name, business type, and at least one contact route are required. {modal === 'edit' ? 'Changes apply everywhere this vendor is used.' : 'You can complete the rest later.'}</p></div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[.9fr_1.1fr]">
@@ -389,8 +416,8 @@ function VendorList() {
             </div>
           </div>
           <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <div className="flex items-center gap-2 text-xs text-slate-500"><ShieldCheck size={16} className="shrink-0 text-emerald-600" /> Supplier details remain editable after creation.</div>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row"><button type="button" onClick={closeModal} className="secondary-button">Cancel</button><button type="submit" disabled={saving} className="primary-button min-w-[10rem]"><UserPlus size={16} /> {saving ? 'Saving vendor…' : 'Add Vendor'}</button></div>
+            <div className="flex items-center gap-2 text-xs text-slate-500"><ShieldCheck size={16} className="shrink-0 text-emerald-600" /> {modal === 'edit' ? 'Updates stay scoped to your workspace.' : 'Supplier details remain editable after creation.'}</div>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row"><button type="button" onClick={closeModal} className="secondary-button">Cancel</button><button type="submit" disabled={saving} className="primary-button min-w-[10rem]">{modal === 'edit' ? <PencilLine size={16} /> : <UserPlus size={16} />} {saving ? (modal === 'edit' ? 'Saving changes…' : 'Saving vendor…') : (modal === 'edit' ? 'Save Changes' : 'Add Vendor')}</button></div>
           </footer>
         </form>
       </ActionModalShell>}
