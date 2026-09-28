@@ -21,6 +21,24 @@
   .primary-button { @apply focus-ring inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-200 transition hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0; }
   .secondary-button { @apply focus-ring inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0; }
   .surface-card { @apply rounded-2xl border border-slate-200/80 bg-white shadow-card; }
+
+  .modal-backdrop {
+    isolation: isolate;
+    background:
+      radial-gradient(circle at 52% 12%, rgba(239, 35, 60, 0.13), transparent 34%),
+      linear-gradient(135deg, rgba(15, 23, 42, 0.5), rgba(15, 23, 42, 0.64));
+    backdrop-filter: blur(7px) saturate(0.82);
+    -webkit-backdrop-filter: blur(7px) saturate(0.82);
+  }
+
+  .modal-backdrop::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: radial-gradient(circle at 50% 50%, transparent 42%, rgba(2, 6, 23, 0.2) 100%);
+  }
 }
 
 * {
