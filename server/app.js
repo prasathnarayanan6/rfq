@@ -6,6 +6,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const vendorRouter = require('./vendor/router');
 const app = express();
+const client = require('./utils/conn');
 app.use(cookieParser());
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000' }));
 app.use(express.json({ limit: '1mb' }));
