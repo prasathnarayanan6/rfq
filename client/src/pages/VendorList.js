@@ -4,6 +4,7 @@ import { Bot, Building2, Check, Clock3, Download, FileSpreadsheet, Mail, MapPin,
 import * as XLSX from 'xlsx';
 import { apiError, initiateVendorCall, listVendors, prepareVendors, saveVendors, updateVendor } from '../API/vendorAPI';
 import { rowsFromFile, validateVendor } from './vendorImport';
+import { Checkbox, FormControlLabel, InputAdornment, TextField } from '@mui/material';
 
 const emptyVendor = { name: '', businessType: '', contact: '', phone: '', whatsapp: '', email: '', location: '', status: 'Pending' };
 const fields = [
@@ -23,15 +24,19 @@ const briefPrompts = [
 
 function FormField({ field, value, error, onChange, compact = false }) {
   return (
-    <label className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-slate-700`}>
-      {field.label} {field.required && <span className="text-brand-600">*</span>}
-      <input
-        type={field.type || 'text'} value={value ?? ''} placeholder={field.placeholder}
-        onChange={(event) => onChange(event.target.value)}
-        className={`field-control ${compact ? 'py-2 text-sm' : ''} ${error ? 'border-red-300 bg-red-50/40 focus:border-red-400 focus:ring-red-300' : ''}`}
-      />
-      {error && <span className="mt-1 block text-xs font-medium text-red-600">{error}</span>}
-    </label>
+    <TextField
+      fullWidth
+      size={compact ? 'small' : 'medium'}
+      type={field.type || 'text'}
+      value={value ?? ''}
+      label={field.label}
+      placeholder={field.placeholder}
+      required={field.required}
+      error={Boolean(error)}
+      helperText={error || ' '}
+      onChange={(event) => onChange(event.target.value)}
+      sx={{ '& .MuiFormHelperText-root': { minHeight: compact ? 14 : 16 } }}
+    />
   );
 }
 
@@ -355,7 +360,16 @@ function VendorList() {
             <h2 className="font-semibold text-ink">{category}</h2>
             <p className="mt-1 text-xs text-slate-500">{loading ? 'Loading your vendor network…' : `${visible.length} ${visible.length === 1 ? 'vendor' : 'vendors'} found`}</p>
           </div>
-          <label className="relative w-full sm:w-72"><span className="sr-only">Search vendors</span><Search size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search vendors…" className="focus-ring w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm placeholder:text-slate-400 focus:border-brand-500 focus:bg-white" /></label>
+          <TextField
+            type="search"
+            size="small"
+            label="Search vendors"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Name, category, or contact"
+            sx={{ width: { xs: '100%', sm: 288 }, '& .MuiOutlinedInput-root': { backgroundColor: '#f8fafc' } }}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={17} className="text-slate-400" /></InputAdornment> } }}
+          />
         </div>
 
         <div className="overflow-x-auto">
@@ -396,7 +410,14 @@ function VendorList() {
                   <div className="mb-5 flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><Building2 size={18} /></span><div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-brand-600">Company profile</p><h3 className="font-semibold text-slate-900">Vendor identity</h3></div></div>
                   <div className="space-y-4">
                     {fields.filter((field) => ['name', 'businessType'].includes(field.name)).map((field) => <FormField key={field.name} field={field} value={newVendor[field.name]} error={errors[field.name]} onChange={(value) => { setNewVendor((current) => ({ ...current, [field.name]: value })); setErrors((current) => ({ ...current, [field.name]: undefined })); }} />)}
-                    <label className="block text-sm font-medium text-slate-700">Approval status<select value={newVendor.status} onChange={(event) => setNewVendor((current) => ({ ...current, status: event.target.value }))} className="field-control"><option>Pending</option><option>Approved</option></select><span className="mt-1.5 block text-xs font-normal text-slate-400">Use Pending when the supplier still needs verification.</span></label>
+                    <TextField
+                      select fullWidth label="Approval status" value={newVendor.status}
+                      onChange={(event) => setNewVendor((current) => ({ ...current, status: event.target.value }))}
+                      helperText="Use Pending when the supplier still needs verification."
+                      slotProps={{ select: { native: true } }}
+                    >
+                      <option>Pending</option><option>Approved</option>
+                    </TextField>
                   </div>
                 </section>
 
@@ -443,7 +464,16 @@ function VendorList() {
 
               <section className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600"><MessageSquareText size={18} /></span><div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-violet-600">Option 02</p><h3 className="font-semibold text-slate-900">Paste an unstructured list</h3><p className="mt-1 text-xs leading-5 text-slate-500">Useful for copied emails, notes, or mixed contact details.</p></div></div>
-                <label className="mt-5 flex flex-1 flex-col text-xs font-semibold uppercase tracking-[.08em] text-slate-500">Paste vendor data<textarea value={pasteText} onChange={(event) => setPasteText(event.target.value)} rows={9} placeholder={'Bright Tools, Hardware, +91 98765 43210\nMetro Papers — Office Supplies — sales@metro.example\n…'} className="focus-ring mt-2 min-h-[14rem] flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-normal leading-6 normal-case tracking-normal text-slate-800 placeholder:text-slate-400 focus:border-brand-400 focus:bg-white" /><span className="mt-2 text-right text-[10px] font-medium normal-case tracking-normal text-slate-400">{pasteText.length} characters</span></label>
+                <TextField
+                  className="mt-5"
+                  fullWidth multiline minRows={9}
+                  label="Paste vendor data"
+                  value={pasteText}
+                  onChange={(event) => setPasteText(event.target.value)}
+                  placeholder={'Bright Tools, Hardware, +91 98765 43210\nMetro Papers — Office Supplies — sales@metro.example\n…'}
+                  helperText={`${pasteText.length} characters`}
+                  sx={{ flex: 1, '& .MuiOutlinedInput-root': { alignItems: 'flex-start', backgroundColor: '#f8fafc' }, '& .MuiFormHelperText-root': { textAlign: 'right' } }}
+                />
               </section>
             </div>
           </div>
@@ -468,17 +498,19 @@ function VendorList() {
                   </div>
                 </div>
 
-                <label className="mt-5 block text-xs font-semibold uppercase tracking-[.08em] text-slate-500">
-                  Business type <span className="text-brand-600">*</span>
-                  <span className="relative mt-2 block">
-                    <Building2 size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <select value={callForm.businessType} onChange={(event) => changeCallBusinessType(event.target.value)} className={`focus-ring w-full appearance-none rounded-xl border bg-slate-50 py-3 pl-10 pr-9 text-sm font-medium text-slate-800 transition focus:bg-white ${callErrors.businessType ? 'border-red-300' : 'border-slate-200 focus:border-brand-400'}`}>
-                      <option value="">Choose a business type</option>
-                      {callableBusinessTypes.map((item) => <option key={item} value={item}>{item}</option>)}
-                    </select>
-                  </span>
-                  {callErrors.businessType && <span className="mt-1.5 block text-xs normal-case tracking-normal text-red-600">{callErrors.businessType}</span>}
-                </label>
+                <TextField
+                  select fullWidth required label="Business type" value={callForm.businessType}
+                  onChange={(event) => changeCallBusinessType(event.target.value)}
+                  error={Boolean(callErrors.businessType)} helperText={callErrors.businessType || 'Choose a category to see callable vendors.'}
+                  slotProps={{
+                    select: { native: true },
+                    input: { startAdornment: <InputAdornment position="start"><Building2 size={17} className="text-slate-400" /></InputAdornment> },
+                  }}
+                  sx={{ mt: 2.5, '& .MuiOutlinedInput-root': { backgroundColor: '#f8fafc' } }}
+                >
+                  <option value="">Choose a business type</option>
+                  {callableBusinessTypes.map((item) => <option key={item} value={item}>{item}</option>)}
+                </TextField>
 
                 <fieldset className="mt-5">
                   <div className="flex items-center justify-between gap-3">
@@ -489,9 +521,9 @@ function VendorList() {
                     {callVendors.map((vendor) => {
                       const selected = callForm.vendorIds.includes(String(vendor.id));
                       return (
-                        <label key={vendor.id} className={`group flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${selected ? 'border-brand-200 bg-white shadow-sm ring-1 ring-brand-100' : 'border-transparent hover:border-slate-200 hover:bg-white'}`}>
-                          <input type="checkbox" className="sr-only" checked={selected} onChange={() => toggleCallVendor(String(vendor.id))} />
-                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition ${selected ? 'bg-brand-600 text-white' : 'bg-white text-slate-500 shadow-sm'}`}>{selected ? <Check size={17} /> : vendor.name?.[0]?.toUpperCase()}</span>
+                        <label key={vendor.id} className={`group flex cursor-pointer items-center gap-2 rounded-xl border p-2.5 transition-all ${selected ? 'border-brand-200 bg-white shadow-sm ring-1 ring-brand-100' : 'border-transparent hover:border-slate-200 hover:bg-white'}`}>
+                          <Checkbox checked={selected} onChange={() => toggleCallVendor(String(vendor.id))} size="small" slotProps={{ input: { 'aria-label': `Select ${vendor.name}` } }} />
+                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition ${selected ? 'bg-brand-50 text-brand-700' : 'bg-white text-slate-500 shadow-sm'}`}>{vendor.name?.[0]?.toUpperCase()}</span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-semibold text-slate-800">{vendor.name}</span>
                             <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500"><Phone size={11} /> {vendor.phone}</span>
@@ -520,14 +552,17 @@ function VendorList() {
                   <div className="mb-2 flex flex-wrap gap-2">
                     {briefPrompts.map((prompt) => <button key={prompt.label} type="button" onClick={() => addBriefPrompt(prompt.text)} className="focus-ring inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"><Plus size={12} /> {prompt.label}</button>)}
                   </div>
-                  <label className="block text-xs font-semibold uppercase tracking-[.08em] text-slate-500">
-                    Conversation brief <span className="text-brand-600">*</span>
-                    <span className="relative mt-2 block">
-                      <textarea value={callForm.conversationBrief} onChange={(event) => { setCallForm((current) => ({ ...current, conversationBrief: event.target.value })); setCallErrors((current) => ({ ...current, conversationBrief: undefined })); }} rows={7} maxLength={4000} placeholder="Example: Ask about availability for 500 units, volume pricing, delivery to Chennai, payment terms, and request a written quotation…" className={`focus-ring min-h-[11.5rem] w-full resize-none rounded-2xl border bg-slate-50 px-4 py-3 text-sm font-normal leading-6 normal-case tracking-normal text-slate-800 placeholder:text-slate-400 focus:bg-white ${callErrors.conversationBrief ? 'border-red-300' : 'border-slate-200 focus:border-brand-400'}`} />
-                      <span className="absolute bottom-3 right-3 rounded-md bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 shadow-sm">{callForm.conversationBrief.length}/4000</span>
-                    </span>
-                    {callErrors.conversationBrief && <span className="mt-1.5 block text-xs normal-case tracking-normal text-red-600">{callErrors.conversationBrief}</span>}
-                  </label>
+                  <TextField
+                    fullWidth required multiline rows={7}
+                    label="Conversation brief"
+                    value={callForm.conversationBrief}
+                    onChange={(event) => { setCallForm((current) => ({ ...current, conversationBrief: event.target.value })); setCallErrors((current) => ({ ...current, conversationBrief: undefined })); }}
+                    error={Boolean(callErrors.conversationBrief)}
+                    placeholder="Example: Ask about availability for 500 units, volume pricing, delivery to Chennai, payment terms, and request a written quotation…"
+                    helperText={callErrors.conversationBrief || `${callForm.conversationBrief.length}/4000`}
+                    slotProps={{ htmlInput: { maxLength: 4000 } }}
+                    sx={{ '& .MuiOutlinedInput-root': { alignItems: 'flex-start', backgroundColor: '#f8fafc' }, '& .MuiFormHelperText-root': { textAlign: callErrors.conversationBrief ? 'left' : 'right' } }}
+                  />
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2">
@@ -553,7 +588,7 @@ function VendorList() {
         {notice?.type === 'error' && <p role="alert" className="mx-5 mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 sm:mx-6">{notice.message}</p>}
         <div className="p-5 sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm text-slate-600">{drafts.length} draft row(s) ready for review</p><span className="text-xs text-slate-400">Uncheck any row to skip it</span></div><div className="space-y-4">{drafts.map((draft, index) => {
           const rowErrors = validateVendor(draft.vendor);
-          return <article key={draft.draftId + index} className={`rounded-2xl border p-4 transition ${draft.selected ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-200 bg-slate-50 opacity-70'}`}><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><label className="flex items-center gap-2 text-sm font-semibold text-slate-800"><input type="checkbox" className="h-4 w-4 rounded accent-[#e30613]" checked={draft.selected} onChange={(event) => changeDraft(index, { selected: event.target.checked })} /> Include row {index + 1}</label>{draft.duplicate && <label className="text-xs font-medium text-amber-700">Possible duplicate <select aria-label={`Resolve duplicate row ${index + 1}`} value={draft.duplicateChoice} onChange={(event) => changeDraft(index, { duplicateChoice: event.target.value, selected: event.target.value === 'keep' })} className="ml-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5"><option value="review">Review</option><option value="keep">Keep anyway</option><option value="skip">Skip</option></select></label>}</div>
+          return <article key={draft.draftId + index} className={`rounded-2xl border p-4 transition ${draft.selected ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-200 bg-slate-50 opacity-70'}`}><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><FormControlLabel control={<Checkbox checked={draft.selected} onChange={(event) => changeDraft(index, { selected: event.target.checked })} />} label={`Include row ${index + 1}`} sx={{ m: 0, '& .MuiFormControlLabel-label': { fontSize: 14, fontWeight: 600, color: '#1e293b' } }} />{draft.duplicate && <div className="flex items-center gap-2 text-xs font-medium text-amber-700"><span>Possible duplicate</span><TextField select size="small" value={draft.duplicateChoice} onChange={(event) => changeDraft(index, { duplicateChoice: event.target.value, selected: event.target.value === 'keep' })} slotProps={{ select: { native: true, inputProps: { 'aria-label': `Resolve duplicate row ${index + 1}` } } }} sx={{ minWidth: 126, '& .MuiOutlinedInput-root': { backgroundColor: '#fffbeb' } }}><option value="review">Review</option><option value="keep">Keep anyway</option><option value="skip">Skip</option></TextField></div>}</div>
             <p className="break-words rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600"><strong className="text-slate-700">Source:</strong> {draft.source}</p>{draft.warnings.map((warning) => <p key={warning} className="mt-2 text-xs font-medium text-amber-700">{warning}</p>)}
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{fields.map((field) => <FormField key={field.name} compact field={field} value={draft.vendor[field.name]} error={draft.selected ? rowErrors[field.name] : undefined} onChange={(value) => changeDraft(index, { vendor: { ...draft.vendor, [field.name]: value } })} />)}</div>
           </article>;

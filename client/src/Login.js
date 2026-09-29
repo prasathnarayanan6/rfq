@@ -7,6 +7,7 @@ import logo from './assets/Red_Beige_Minimal_Simple_Typographic_Chic_Logo-remove
 import LoginAPI from './API/loginAPI';
 import CustomCloseButton from './utils/CustomeCloseButton';
 import 'react-toastify/dist/ReactToastify.css';
+import { Button, IconButton, InputAdornment, TextField } from '@mui/material';
 
 const highlights = [
   'Organize vendor data in one workspace',
@@ -109,43 +110,56 @@ function Login() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            <label className="block text-sm font-semibold text-slate-700">
-              Email address
-              <span className="relative mt-2 block">
-                <Mail size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="email" placeholder="you@company.com" value={userData.user_mail}
-                  onChange={handleChange} name="user_mail" autoComplete="email"
-                  className="focus-ring w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm shadow-sm placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500"
-                />
-              </span>
-            </label>
+            <TextField
+              fullWidth
+              type="email"
+              label="Email address"
+              placeholder="you@company.com"
+              value={userData.user_mail}
+              onChange={handleChange}
+              name="user_mail"
+              autoComplete="email"
+              slotProps={{
+                input: {
+                  startAdornment: <InputAdornment position="start"><Mail size={18} className="text-slate-400" /></InputAdornment>,
+                },
+              }}
+            />
 
-            <label className="block text-sm font-semibold text-slate-700">
-              Password
-              <span className="relative mt-2 block">
-                <LockKeyhole size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'} placeholder="Enter your password"
-                  value={userData.user_password} onChange={handleChange} name="user_password"
-                  autoComplete="current-password"
-                  className="focus-ring w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-12 text-sm shadow-sm placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500"
-                />
-                <button
-                  type="button" onClick={() => setShowPassword((visible) => !visible)}
-                  className="focus-ring absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
-                </button>
-              </span>
-            </label>
+            <TextField
+              fullWidth
+              type={showPassword ? 'text' : 'password'}
+              label="Password"
+              placeholder="Enter your password"
+              value={userData.user_password}
+              onChange={handleChange}
+              name="user_password"
+              autoComplete="current-password"
+              slotProps={{
+                input: {
+                  startAdornment: <InputAdornment position="start"><LockKeyhole size={18} className="text-slate-400" /></InputAdornment>,
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        type="button"
+                        size="small"
+                        edge="end"
+                        onClick={() => setShowPassword((visible) => !visible)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
 
-            <button type="submit" className="primary-button group mt-2 w-full py-3.5" disabled={loading}>
+            <Button type="submit" variant="contained" fullWidth disabled={loading} sx={{ mt: 1, py: 1.45, fontSize: 14 }}>
               {loading
                 ? <><ClipLoader color="#ffffff" size={18} /> Signing you in…</>
                 : <>Login securely <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" /></>}
-            </button>
+            </Button>
           </form>
 
           <p className="mt-8 text-center text-xs leading-5 text-slate-400">

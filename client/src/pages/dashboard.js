@@ -3,6 +3,7 @@ import { ArrowRight, BadgeCheck, Building2, Check, FileText, GitCompareArrows, I
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiError, listOutreachRequests, listQuotes, listVendors, queueOutreach } from '../API/vendorAPI';
+import { Checkbox, TextField } from '@mui/material';
 
 const shortId = (id = '') => String(id).split('-')[0].toUpperCase();
 const formatMoney = (amount, currency = 'INR') => amount === null || amount === undefined || amount === '' ? 'Not specified'
@@ -26,9 +27,15 @@ function OutreachModal({ compose, form, errors, submitting, onChange, onToggle, 
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-brand-600">Requirement</p><p className="mt-2 text-sm leading-6 text-slate-700">{compose.request.requirements}</p></div>
             <fieldset><div className="flex items-center justify-between gap-3"><legend className="text-sm font-semibold text-slate-800">Recipients</legend><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600">{form.vendorIds.length} selected</span></div><p className="mt-1 text-xs text-slate-500">Only vendors with a configured {isWhatsApp ? 'WhatsApp number' : 'email address'} are available.</p>
-              <div className={`mt-3 grid gap-2 rounded-2xl border p-2 sm:grid-cols-2 ${errors.vendorIds ? 'border-red-300 bg-red-50/40' : 'border-slate-200 bg-slate-100/70'}`}>{compose.eligible.map((vendor) => { const selected = form.vendorIds.includes(String(vendor.id)); return <label key={vendor.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${selected ? 'border-brand-200 bg-white shadow-sm' : 'border-transparent hover:bg-white'}`}><input type="checkbox" className="sr-only" checked={selected} onChange={() => onToggle(String(vendor.id))} /><span className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold ${selected ? 'bg-brand-600 text-white' : 'bg-white text-slate-500'}`}>{selected ? <Check size={16} /> : vendor.name?.[0]}</span><span className="min-w-0"><span className="block truncate text-sm font-semibold text-slate-800">{vendor.name}</span><span className="block truncate text-[11px] text-slate-500">{isWhatsApp ? vendor.whatsapp : vendor.email}</span></span></label>; })}{!compose.eligible.length && <p className="col-span-full py-6 text-center text-sm text-slate-500">No eligible recipients for this channel.</p>}</div>{errors.vendorIds && <p className="mt-1.5 text-xs text-red-600">{errors.vendorIds}</p>}
+              <div className={`mt-3 grid gap-2 rounded-2xl border p-2 sm:grid-cols-2 ${errors.vendorIds ? 'border-red-300 bg-red-50/40' : 'border-slate-200 bg-slate-100/70'}`}>{compose.eligible.map((vendor) => { const selected = form.vendorIds.includes(String(vendor.id)); return <label key={vendor.id} className={`flex cursor-pointer items-center gap-2 rounded-xl border p-2.5 transition ${selected ? 'border-brand-200 bg-white shadow-sm' : 'border-transparent hover:bg-white'}`}><Checkbox checked={selected} onChange={() => onToggle(String(vendor.id))} size="small" slotProps={{ input: { 'aria-label': `Select ${vendor.name}` } }} /><span className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold ${selected ? 'bg-brand-50 text-brand-700' : 'bg-white text-slate-500'}`}>{vendor.name?.[0]}</span><span className="min-w-0"><span className="block truncate text-sm font-semibold text-slate-800">{vendor.name}</span><span className="block truncate text-[11px] text-slate-500">{isWhatsApp ? vendor.whatsapp : vendor.email}</span></span></label>; })}{!compose.eligible.length && <p className="col-span-full py-6 text-center text-sm text-slate-500">No eligible recipients for this channel.</p>}</div>{errors.vendorIds && <p className="mt-1.5 text-xs text-red-600">{errors.vendorIds}</p>}
             </fieldset>
-            <label className="block text-sm font-semibold text-slate-800">Message<textarea rows={7} maxLength={5000} value={form.message} onChange={(event) => onChange(event.target.value)} className={`focus-ring mt-2 w-full resize-none rounded-2xl border bg-white px-4 py-3 text-sm leading-6 text-slate-800 shadow-sm ${errors.message ? 'border-red-300' : 'border-slate-200 focus:border-brand-400'}`} />{errors.message && <span className="mt-1.5 block text-xs text-red-600">{errors.message}</span>}<span className="mt-1 block text-right text-[10px] font-normal text-slate-400">{form.message.length}/5000</span></label>
+            <TextField
+              fullWidth multiline rows={7} label="Message" value={form.message}
+              onChange={(event) => onChange(event.target.value)} error={Boolean(errors.message)}
+              helperText={errors.message || `${form.message.length}/5000`}
+              slotProps={{ htmlInput: { maxLength: 5000 } }}
+              sx={{ '& .MuiOutlinedInput-root': { alignItems: 'flex-start' }, '& .MuiFormHelperText-root': { textAlign: errors.message ? 'left' : 'right' } }}
+            />
           </div>
           <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div className="flex items-center gap-2 text-xs text-slate-500"><ShieldCheck size={16} className="text-emerald-600" /> Stored first, then delivered when provider credentials are ready.</div><div className="flex flex-col-reverse gap-2 sm:flex-row"><button type="button" onClick={onClose} className="secondary-button">Cancel</button><button type="submit" disabled={submitting || !compose.eligible.length} className="primary-button min-w-[11.5rem]"><Send size={15} /> {submitting ? 'Queuing…' : `Queue ${isWhatsApp ? 'WhatsApp' : 'Email'}`}</button></div></footer>
         </form>
@@ -93,7 +100,17 @@ function Dashboard() {
       const { data } = await queueOutreach(compose.request.id, { channel: compose.channel, ...outreachForm });
       const countKey = compose.channel === 'whatsapp' ? 'whatsappCount' : 'emailCount';
       setRequests((current) => current.map((request) => request.id === compose.request.id ? { ...request, [countKey]: Number(request[countKey] || 0) + data.messages.length } : request));
-      setNotice({ type: 'success', message: data.providerReady ? `${data.messages.length} message(s) queued for delivery.` : `${data.messages.length} message(s) saved. They will deliver after ${compose.channel === 'whatsapp' ? 'WhatsApp' : 'SMTP'} credentials are connected.` });
+      const sentCount = data.messages.filter((message) => message.status === 'Sent').length;
+      const failedCount = data.messages.filter((message) => message.status === 'Failed').length;
+      const providerName = compose.channel === 'whatsapp' ? 'WhatsApp' : 'SMTP';
+      const message = !data.providerReady
+        ? `${data.messages.length} message(s) saved. They will deliver after ${providerName} credentials are connected.`
+        : failedCount
+          ? `${failedCount} message(s) could not be delivered. Check the ${providerName} credentials and try again.`
+          : sentCount
+            ? `${sentCount} email message(s) sent successfully.`
+            : `${data.messages.length} message(s) queued for delivery.`;
+      setNotice({ type: failedCount ? 'error' : 'success', message });
       setCompose(null);
     } catch (requestError) { setNotice({ type: 'error', message: apiError(requestError, 'Could not queue outreach') }); }
     finally { setSubmitting(false); }

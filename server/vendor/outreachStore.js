@@ -3,6 +3,16 @@ const { getPool } = require('./store');
 const WhatsAppAgent = require('../../AI/WhatsAppAgent');
 const MailAgent = require('../../AI/MailAgent');
 const MailMonitor = require('../../AI/MailAgent/monitor');
+const MailProvider = require('./mailProvider');
+
+function safeMailError(error) {
+  const authFailure = error?.code === 'EAUTH' || Number(error?.responseCode) === 535;
+  return {
+    code: String(error?.code || 'SMTP_ERROR').slice(0, 40),
+    responseCode: Number(error?.responseCode) || null,
+    message: authFailure ? 'SMTP authentication failed' : 'SMTP delivery failed',
+  };
+}
 
 async function listOutreachRequests(ownerId) {
   const database = getPool();
@@ -88,7 +98,33 @@ async function queueOutbound(ownerId, requestId, outbound) {
       [randomUUID(), ownerId, requestId, vendor.id, vendor.name, outbound.channel, generated.subject,
         generated.body, status, { destination: vendor[contactColumn] }]
     );
-    saved.push(result.rows[0]);
+    let message = result.rows[0];
+    if (outbound.channel === 'email' && providerReady) {
+      try {
+        const delivery = await MailProvider.sendMessage({
+          to: vendor.email,
+          subject: generated.subject,
+          body: generated.body,
+        });
+        await database.query(
+          `UPDATE vendor_outreach_messages
+           SET status = 'Sent', metadata = metadata || $2::jsonb
+           WHERE id = $1`,
+          [message.id, JSON.stringify({ providerMessageId: delivery.messageId, accepted: delivery.accepted })]
+        );
+        message = { ...message, status: 'Sent' };
+      } catch (error) {
+        const deliveryError = safeMailError(error);
+        await database.query(
+          `UPDATE vendor_outreach_messages
+           SET status = 'Failed', metadata = metadata || $2::jsonb
+           WHERE id = $1`,
+          [message.id, JSON.stringify({ deliveryError })]
+        );
+        message = { ...message, status: 'Failed', deliveryError };
+      }
+    }
+    saved.push(message);
   }
   return { messages: saved, providerReady };
 }

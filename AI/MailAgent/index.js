@@ -4,6 +4,19 @@ function isConfigured() {
   return PROVIDER_ENV.every((name) => Boolean(process.env[name]));
 }
 
+function getTransportOptions() {
+  const port = Number(process.env.SMTP_PORT || 587);
+  return {
+    host: process.env.SMTP_HOST,
+    port,
+    secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD,
+    },
+  };
+}
+
 function buildMessage({ vendorName, requirements, requestId }) {
   return {
     subject: `Request for quotation · ${requestId}`,
@@ -20,4 +33,4 @@ function buildMessage({ vendorName, requirements, requestId }) {
   };
 }
 
-module.exports = { buildMessage, isConfigured };
+module.exports = { buildMessage, getTransportOptions, isConfigured };

@@ -8,6 +8,7 @@ const { validateCallRequest } = require('../vendor/callValidation');
 const { validateOutbound, validateInbound } = require('../vendor/outreachValidation');
 const { extractQuote } = require('../../AI/WhatsAppAgent/monitor');
 const { documentFormat, imageFormat, normalizeAnalysis } = require('../../AI/WhatsAppAgent/agent');
+const MailAgent = require('../../AI/MailAgent');
 
 test('vendor minimum is name, business type, and one valid contact route', () => {
   const valid = validateVendor({ name: '  Bright Tools ', businessType: 'Hardware', email: 'sales@example.com' });
@@ -76,6 +77,23 @@ test('outreach messages require a supported channel, recipients, and useful cont
   assert.deepEqual(validateInbound({ channel: 'email', vendorId: 2, body: 'Our quotation is attached.' }).errors, {});
   assert.deepEqual(validateInbound({ channel: 'whatsapp', vendorId: 2, body: '' }, { hasImage: true }).errors, {});
   assert.ok(validateInbound({ channel: 'email', vendorId: 'bad', body: '' }).errors.vendorId);
+});
+
+test('mail agent builds a secure SMTP transport from environment settings', () => {
+  const previous = Object.fromEntries(['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASSWORD']
+    .map((name) => [name, process.env[name]]));
+  Object.assign(process.env, {
+    SMTP_HOST: 'smtp.example.com', SMTP_PORT: '587', SMTP_SECURE: 'false',
+    SMTP_USER: 'rfq@example.com', SMTP_PASSWORD: 'app-password',
+  });
+  assert.equal(MailAgent.isConfigured(), true);
+  assert.deepEqual(MailAgent.getTransportOptions(), {
+    host: 'smtp.example.com', port: 587, secure: false,
+    auth: { user: 'rfq@example.com', pass: 'app-password' },
+  });
+  for (const [name, value] of Object.entries(previous)) {
+    if (value === undefined) delete process.env[name]; else process.env[name] = value;
+  }
 });
 
 test('WhatsApp monitor extracts comparable quotation details from a reply', () => {
