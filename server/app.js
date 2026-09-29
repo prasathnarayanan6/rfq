@@ -13,6 +13,7 @@ app.use(cookieParser());
 const allowedOrigins = [
   'http://localhost:3000',
   'https://d1ajdvs3zlxesc.cloudfront.net',
+  'https://d1ajdvs3zlxesc.cloudfront.net'
 ];
 app.use(
   cors({
