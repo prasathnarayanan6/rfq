@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const VENDOR_API_URL = process.env.REACT_APP_VENDOR_API_URL || 'http://localhost:4007';
+const VENDOR_API_URL = process.env.REACT_APP_VENDOR_API_URL || 'http://ec2-3-7-5-175.ap-south-1.compute.amazonaws.com:4007';
 
 const client = axios.create({ baseURL: `${VENDOR_API_URL}/api/v1/vendors` });
 client.interceptors.request.use((config) => {

@@ -10,10 +10,22 @@ const vendorRouter = require('./vendor/router');
 const authRouter = require('./Auth/AuthController');
 const app = express();
 app.use(cookieParser());
-app.use(cors({
-    origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://d1ajdvs3zlxesc.cloudfront.net',
+];
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
-}));
+  })
+);
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/v1/login', authRouter);
 app.use('/api/v1/vendors', vendorRouter);
